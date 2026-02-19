@@ -1,60 +1,63 @@
+// schema.prisma
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "postgresql" // change based on your database
   url      = env("DATABASE_URL")
 }
 
-model Company {
-  id        String   @id @default(uuid())
-  name      String
-  slug      String   @unique
-  email     String
-  createdAt DateTime @default(now())
-  users     User[]
-  barbers   Barber[]
-  services  Service[]
+// Tenant Model
+model Tenant {
+  id          Int       @id @default(autoincrement())
+  name        String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  users       User[]
+  services    Service[]
   appointments Appointment[]
 }
 
+// User Model
 model User {
-  id        String @id @default(uuid())
+  id        Int       @id @default(autoincrement())
   name      String
-  email     String @unique
+  email     String    @unique
   password  String
-  role      String @default("ADMIN")
-  company   Company @relation(fields: [companyId], references: [id])
-  companyId String
+  tenantId  Int
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  appointments Appointment[]
 }
 
-model Barber {
-  id        String @id @default(uuid())
-  name      String
-  company   Company @relation(fields: [companyId], references: [id])
-  companyId String
-}
-
+// Service Model
 model Service {
-  id        String @id @default(uuid())
-  name      String
-  price     Float
-  duration  Int
-  company   Company @relation(fields: [companyId], references: [id])
-  companyId String
+  id         Int       @id @default(autoincrement())
+  name       String
+  price      Float
+  duration   Int       // minutes
+  tenantId   Int
+  tenant     Tenant    @relation(fields: [tenantId], references: [id])
 }
 
+// Appointment Model
 model Appointment {
-  id         String   @id @default(uuid())
-  clientName String
-  date       DateTime
-  status     String   @default("PENDING")
-  barber     Barber   @relation(fields: [barberId], references: [id])
-  barberId   String
+  id         Int      @id @default(autoincrement())
+  appointmentTime DateTime
+  userId     Int
+  serviceId  Int
+  tenantId   Int
+  user       User     @relation(fields: [userId], references: [id])
   service    Service  @relation(fields: [serviceId], references: [id])
-  serviceId  String
-  company    Company  @relation(fields: [companyId], references: [id])
-  companyId  String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+// Client Model
+model Client {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String    @unique
+  phone     String
+  appointments Appointment[]
 }
