@@ -5,59 +5,103 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql" // change based on your database
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// Tenant Model
+enum Role {
+  SUPER_ADMIN
+  OWNER
+  ADMIN
+  BARBER
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum Plan {
+  START
+  PRO
+  ENTERPRISE
+}
+
 model Tenant {
-  id          Int       @id @default(autoincrement())
-  name        String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  users       User[]
-  services    Service[]
-  appointments Appointment[]
+  id            Int      @id @default(autoincrement())
+  name          String
+  slug          String   @unique
+  logo          String?
+  primaryColor  String?
+  secondaryColor String?
+  accentColor   String?
+  isActive      Boolean  @default(true)
+
+  users         User[]
+  services      Service[]
+  barbers       Barber[]
+  clients       Client[]
+  appointments  Appointment[]
+  subscription  Subscription?
+
+  createdAt     DateTime @default(now())
 }
 
-// User Model
+model Subscription {
+  id        Int      @id @default(autoincrement())
+  plan      Plan
+  status    SubscriptionStatus
+  stripeId  String?
+  tenantId  Int      @unique
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+}
+
 model User {
-  id        Int       @id @default(autoincrement())
+  id        Int    @id @default(autoincrement())
   name      String
-  email     String    @unique
+  email     String @unique
   password  String
-  tenantId  Int
-  tenant    Tenant    @relation(fields: [tenantId], references: [id])
-  appointments Appointment[]
+  role      Role
+  tenantId  Int?
+  tenant    Tenant? @relation(fields: [tenantId], references: [id])
 }
 
-// Service Model
 model Service {
-  id         Int       @id @default(autoincrement())
-  name       String
-  price      Float
-  duration   Int       // minutes
-  tenantId   Int
-  tenant     Tenant    @relation(fields: [tenantId], references: [id])
-}
-
-// Appointment Model
-model Appointment {
-  id         Int      @id @default(autoincrement())
-  appointmentTime DateTime
-  userId     Int
-  serviceId  Int
-  tenantId   Int
-  user       User     @relation(fields: [userId], references: [id])
-  service    Service  @relation(fields: [serviceId], references: [id])
-  tenant     Tenant   @relation(fields: [tenantId], references: [id])
-}
-
-// Client Model
-model Client {
-  id        Int       @id @default(autoincrement())
+  id        Int    @id @default(autoincrement())
   name      String
-  email     String    @unique
+  price     Float
+  duration  Int
+  tenantId  Int
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+}
+
+model Barber {
+  id        Int    @id @default(autoincrement())
+  name      String
+  tenantId  Int
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+}
+
+model Client {
+  id        Int    @id @default(autoincrement())
+  name      String
   phone     String
-  appointments Appointment[]
+  tenantId  Int
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+}
+
+model Appointment {
+  id        Int      @id @default(autoincrement())
+  date      DateTime
+  serviceId Int
+  barberId  Int
+  clientId  Int
+  tenantId  Int
+
+  service   Service  @relation(fields: [serviceId], references: [id])
+  barber    Barber   @relation(fields: [barberId], references: [id])
+  client    Client   @relation(fields: [clientId], references: [id])
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
 }
